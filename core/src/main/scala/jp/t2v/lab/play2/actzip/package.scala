@@ -29,6 +29,4 @@ package object actzip {
 
   }
 
-  val Z = ZippedRequest
-
 }

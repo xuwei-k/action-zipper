@@ -8,6 +8,8 @@ object ActionGenerator {
     // R1[A], R2[A], R3[A], ...
     val concreteTypes = (1 to i).map(j => s"R$j[A]").mkString(", ")
 
+    val anys = (1 to i).map(j => s"R$j[AnyContent]").mkString(", ")
+
 s"""
 package jp.t2v.lab.play2.actzip
 
@@ -15,11 +17,11 @@ import play.api.mvc.{Result, Request, ActionBuilder, AnyContent, Action}
 import play.api.mvc.BodyParsers._
 import scala.concurrent.Future
 
-class ZippedAction$i[$existentialTypes](${(1 to i).map(j => s"val b$j: ActionBuilder[R$j]").mkString(", ")}) extends ActionBuilder[({type L[A] = ZippedRequest$i[A, $higherKindTypes]})#L] {
+class ZippedAction$i[$existentialTypes](${(1 to i).map(j => s"val b$j: ActionBuilder[R$j]").mkString(", ")}) extends ActionBuilder[({type L[A] = (Request[A], $concreteTypes)})#L] {
 
-  override def invokeBlock[A](request: Request[A], block: ZippedRequest$i[A, $higherKindTypes] => Future[Result]): Future[Result] = {
+  override def invokeBlock[A](request: Request[A], block: ((Request[A], $concreteTypes)) => Future[Result]): Future[Result] = {
     ${(1 to i).map(j => s"    b$j.invokeBlock(request, { r$j: R$j[A] =>").mkString("\n")}
-      block(new ZippedRequest$i[A, $higherKindTypes](${(1 to i).map(j => s"r$j").mkString(", ")}, request))
+      block(request, ${(1 to i).map(j => s"r$j").mkString(", ")})
     ${(1 to i).map(j => s"    })").mkString("\n")}
   }
 
@@ -37,8 +39,8 @@ ${if (i < lastIndex - 1) {
   }.mkString("\n")
 } else "" }
 
-  def any(f: ZippedRequest$i[AnyContent, $higherKindTypes] => Result): Action[AnyContent] = apply(parse.anyContent)(f)
-  def anyAsync(f: ZippedRequest$i[AnyContent, $higherKindTypes] => Future[Result]): Action[AnyContent] = async(parse.anyContent)(f)
+  def any(f: (Request[AnyContent], $anys) => Result): Action[AnyContent] = apply(parse.anyContent)(f.tupled)
+  def anyAsync(f: (Request[AnyContent], $anys) => Future[Result]): Action[AnyContent] = async(parse.anyContent)(f.tupled)
 
 }
 """
